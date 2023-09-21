@@ -2,62 +2,43 @@
 
 $before = microtime(true);
 
-function implodeTypes(array $types): string
+function get(string $uri)
 {
-    if (array_key_exists('name', $types)) {
-        return 'Type: '.$types['name'];
-    }
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $uri);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $data = curl_exec($ch);
+    curl_close($ch);
 
-    return 'Types: '.implode(', ', array_map(fn ($t) => $t['type']['name'], $types));
+    return json_decode($data, true);
 }
 
-function genderedName(string $name): string
+function implodeTypes(array $types): string
 {
+    if(array_key_exists('name', $types)) {
+        return 'Type: ' . $types['name'];
+    }
+
+    return 'Types: ' . implode(', ', array_map(fn($t) => $t['type']['name'], $types));
+}
+
+function genderedName(string $name): string {
     return str_replace(['-m', '-f'], ['♂', '♀'], $name);
 }
 
-function getPokemon(int $limit = 151): array
-{
-    $handles = [];
-    $mh = curl_multi_init();
-    $baseURL = 'https://pokeapi.co/api/v2/pokemon/';
-    for ($i = 1; $i <= $limit; $i++) {
-        $handles[$i] = curl_init($baseURL.$i);
-        curl_setopt_array($handles[$i], [
-            CURLOPT_RETURNTRANSFER => 1,
-            CURLOPT_TIMEOUT => 10,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
-            CURLOPT_HEADER => 0,
-        ]);
-        curl_multi_add_handle($mh, $handles[$i]);
-    }
+// name url
 
-    do {
-        curl_multi_exec($mh, $active);
-        curl_multi_select($mh);
-    } while ($active);
+$allPokemon = get('https://pokeapi.co/api/v2/pokemon?limit=151')['results'];
 
-    $output = [];
-    foreach ($handles as $ch) {
-        $output[] = json_decode(curl_multi_getcontent($ch), true);
-        curl_multi_remove_handle($mh, $ch);
-        curl_close($ch);
-    }
-    curl_multi_close($mh);
 
-    return $output;
-}
-
-$allPokemon = getPokemon();
 $HTML = '';
-foreach ($allPokemon as $data) {
+foreach ($allPokemon as $pokemon) {
+    $data = get($pokemon['url']);
     $HTML .= "<div class='pokemon'>";
-    $HTML .= '<h1>'.genderedName($data['name']).'</h1>';
-    $HTML .= '<h2>'.implodeTypes($data['types']).'</h2>';
+    $HTML .= "<h1>".genderedName($data['name'])."</h1>";
+    $HTML .= "<h2>".implodeTypes($data['types'])."</h2>";
     $HTML .= "<div class='image'><img src='".$data['sprites']['front_default']."' class='the-image' width='80' height='80' /><img src='".$data['sprites']['front_shiny']."' class='shiny-image' width='80' height='80' /></div>";
-    $HTML .= '</div>';
+    $HTML .= "</div>";
 }
 
 $after = microtime(true);
@@ -105,15 +86,12 @@ $timeTaken = number_format(($after - $before), 5);
             font-size: 1rem;
             font-weight: bold;
         }
-
         .image .shiny-image {
             display: none;
         }
-
         .image:hover .shiny-image {
             display: block;
         }
-
         .image:hover .the-image {
             display: none;
         }
@@ -124,7 +102,7 @@ $timeTaken = number_format(($after - $before), 5);
     <h1>Time taken: <?= $timeTaken; ?></h1>
 </div>
 <div class="body">
-    <?= $HTML; ?>
+    <?=$HTML;?>
 </div>
 </body>
 </html>
