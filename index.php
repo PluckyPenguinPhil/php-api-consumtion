@@ -1,5 +1,13 @@
 <?php
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Pool;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
+
+require_once 'vendor/autoload.php';
+
 $before = microtime(true);
 
 function implodeTypes(array $types): string
@@ -20,9 +28,26 @@ function getPokemon(int $limit = 151): array
 {
     $output = [];
     $baseURL = 'https://pokeapi.co/api/v2/pokemon/';
-    for ($i = 1; $i <= $limit; $i++) {
-        $output[] = json_decode(file_get_contents($baseURL.$i), true);
-    }
+    $client = new Client();
+
+    $requests = function ($limit) use ($baseURL) {
+        for ($i = 1; $i <= $limit; $i++) {
+            yield new Request('GET', $baseURL.$i, [], '', '2.0');
+        }
+    };
+
+    $pool = new Pool($client, $requests($limit), [
+        'concurrency' => 5,
+        'fulfilled' => function (Response $response) use (&$output) {
+            $output[] = json_decode($response->getBody()->getContents(), true);
+        },
+        'rejected' => function (RequestException $exception, $index) {
+            //
+        },
+    ]);
+
+    $promise = $pool->promise();
+    $promise->wait();
 
     return $output;
 }

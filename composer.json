@@ -1,0 +1,6 @@
+{
+    "name": "bluebayphil/pokedex-api",
+    "require": {
+        "guzzlehttp/guzzle": "^7.8"
+    }
+}
