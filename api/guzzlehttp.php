@@ -32,7 +32,7 @@ function getPokemon(int $limit = 151): array
 
     $requests = function ($limit) use ($baseURL) {
         for ($i = 1; $i <= $limit; $i++) {
-            yield new Request('GET', $baseURL.$i, [], '', '2.0');
+            yield new Request('GET', $baseURL.$i, [], '');
         }
     };
 
